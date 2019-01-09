@@ -6,6 +6,8 @@
 #include <iostream>
 #include <vector>
 #include <cassert>
+#include <utility>
+#include <vector>
 
 static cv::Mat hadamard(int n) {
     assert(n > 0 && (n & (n - 1)) == 0);
@@ -38,6 +40,36 @@ cv::Mat get_base(int width) {
     };
     return cv::getAffineTransform(pts1, pts2);
 }
+
+std::pair<cv::Mat, cv::Mat> preproc(const cv::Mat &bgr) {
+    cv::Mat bgr_f32, resized;
+
+    if (bgr.type() == CV_8UC3) {
+        bgr.convertTo(bgr_f32, CV_32FC3, 1.0 / 255.0);
+    } else if (bgr.type() == CV_32FC3) {
+        bgr_f32 = bgr;
+    } else {
+        throw "Not implemented!";
+    }
+
+    cv::resize(bgr_f32, resized, cv::Size(DEST_WIDTH, DEST_WIDTH));
+    cv::GaussianBlur(resized, resized, cv::Size(9, 9), 0, 0);
+
+    float TRANS[3][3] = {{0.072169, 0.212671, 0.715160},
+                         {0.950227, 0.019334, 0.119193},
+                         {0.180423, 0.412453, 0.357580}};
+    cv::Mat trans_mat = cv::Mat(3, 3, CV_32FC1, TRANS).t();
+    cv::Mat seq = resized.reshape(1, DEST_WIDTH * DEST_WIDTH) * trans_mat;
+    cv::Mat xyz = seq.reshape(3, DEST_WIDTH);  //cv::cvtColor(blur, xyz, cv::COLOR_BGR2XYZ);
+    std::vector<cv::Mat> channels(3);
+    cv::split(xyz, channels);
+
+    //cv::Mat yu = channels[0];
+    cv::Mat ca = channels[1];
+    cv::Mat cb = channels[2];
+
+    return std::make_pair(ca, cb);
+};
 
 std::vector<bool> decode(const cv::Mat &ca,
                          const cv::Mat &cb,

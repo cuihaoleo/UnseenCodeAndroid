@@ -13,31 +13,14 @@ extern "C" {
 #include "opencv2/imgproc.hpp"
 
 extern "C" JNIEXPORT jbyteArray JNICALL
-Java_com_example_cuihao_unseencodeandroid_MainActivity_decodeJNI(
+Java_com_example_cuihao_unseencodeandroid_NativeLibWrapper_decodeJNI(
         JNIEnv *env,
         jobject /* this */,
         long addrInMat) {
-    cv::Mat *img = (cv::Mat*)addrInMat;
-    cv::Mat bgr_f32, resized, blur, xyz;
-    std::vector<cv::Mat> channels(3);
+    cv::Mat img = *(cv::Mat*)addrInMat;
+    auto p = preproc(img);
+    std::vector<bool> msg = decode(p.first, p.second, BLOCK_N);
 
-    (*img).convertTo(bgr_f32, CV_32FC3, 1.0/255.0);
-
-    cv::resize(bgr_f32, resized, cv::Size(DEST_WIDTH, DEST_WIDTH));
-    cv::GaussianBlur(resized, blur, cv::Size(9, 9), 0, 0);
-
-    float TRANS[3][3] = {{0.072169, 0.212671, 0.715160}, {0.950227, 0.019334, 0.119193}, {0.180423, 0.412453, 0.357580}};
-    cv::Mat trans_mat = cv::Mat(3, 3, CV_32FC1, TRANS).t();
-    cv::Mat seq = blur.reshape(1, blur.cols*blur.rows) * trans_mat;
-    xyz = seq.reshape(3, blur.rows);
-    //cv::cvtColor(blur, xyz, cv::COLOR_BGR2XYZ);
-    cv::split(xyz, channels);
-
-    cv::Mat yu = channels[0];  // Y
-    cv::Mat ca = channels[1];  // X
-    cv::Mat cb = channels[2];  // Z
-
-    std::vector<bool> msg = decode(ca, cb, BLOCK_N);
     jbyteArray result = env->NewByteArray((jsize)msg.size());
     jbyte buf[msg.size()];
     for (int i=0; i<msg.size(); i++)
@@ -48,7 +31,7 @@ Java_com_example_cuihao_unseencodeandroid_MainActivity_decodeJNI(
 }
 
 extern "C" JNIEXPORT jdoubleArray JNICALL
-Java_com_example_cuihao_unseencodeandroid_MainActivity_detectBoxJNI(
+Java_com_example_cuihao_unseencodeandroid_NativeLibWrapper_detectBoxJNI(
         JNIEnv *env,
         jobject /* this */,
         long addrInMat) {
@@ -68,7 +51,7 @@ Java_com_example_cuihao_unseencodeandroid_MainActivity_detectBoxJNI(
 }
 
 extern "C" JNIEXPORT jstring JNICALL
-Java_com_example_cuihao_unseencodeandroid_MainActivity_unseenCodeDecodeJNI(
+Java_com_example_cuihao_unseencodeandroid_NativeLibWrapper_unseenCodeDecodeJNI(
         JNIEnv *env,
         jobject /* this */,
         jbyteArray input) {
@@ -86,7 +69,7 @@ Java_com_example_cuihao_unseencodeandroid_MainActivity_unseenCodeDecodeJNI(
 }
 
 extern "C" JNIEXPORT jstring JNICALL
-Java_com_example_cuihao_unseencodeandroid_MainActivity_stringFromJNI(
+Java_com_example_cuihao_unseencodeandroid_NativeLibWrapper_stringFromJNI(
         JNIEnv *env,
         jobject /* this */) {
     std::string hello = "Hello from C++";
